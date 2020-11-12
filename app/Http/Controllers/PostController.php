@@ -37,7 +37,8 @@ class PostController extends Controller
      */
     public function show($id)
     {
-        Post::find($id);
+        $post = Post::find($id);
+        return $post;
     }
 
     /**
@@ -49,7 +50,8 @@ class PostController extends Controller
      */
     public function update(Request $request, $id)
     {
-        Post::find($id)->update($request->all());
+        $post = Post::find($id)->update($request->all());
+        return $post;
     }
 
     /**
@@ -61,5 +63,6 @@ class PostController extends Controller
     public function destroy($id)
     {
         Post::destroy($id);
+        return "Post deleted successfully";
     }
 }
