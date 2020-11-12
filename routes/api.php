@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\RegisterController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,8 +16,11 @@ use App\Http\Controllers\PostController;
 |
 */
 
-Route::resource("posts", PostController::class);
+Route::apiResource("posts", PostController::class);
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
-});
+
+Route::post("register", [RegisterController::class, 'register']);
+Route::post("login", [AuthController::class, 'login']);
+Route::post("logout", [AuthController::class, 'logout']);
+Route::post("refresh", [AuthController::class, 'refresh']);
+Route::post("me", [AuthController::class, 'me']);
