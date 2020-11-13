@@ -19,8 +19,14 @@ use App\Http\Controllers\RegisterController;
 Route::apiResource("posts", PostController::class);
 
 
-Route::post("register", [RegisterController::class, 'register']);
-Route::post("login", [AuthController::class, 'login']);
-Route::post("logout", [AuthController::class, 'logout']);
-Route::post("refresh", [AuthController::class, 'refresh']);
-Route::post("me", [AuthController::class, 'me']);
+Route::group([
+    'middleware' => 'api',
+    'namespace' => 'App\Http\Controllers',
+    'prefix' => 'auth',
+], function ($router) {
+    Route::post("login", 'AuthController@login');
+    Route::post("register", 'AuthController@register');
+    Route::post("logout", 'AuthController@logout');
+    Route::post("profile", 'AuthController@profile');
+    Route::post("refresh", 'AuthController@refresh');
+});

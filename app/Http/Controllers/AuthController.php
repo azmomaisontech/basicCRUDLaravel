@@ -1,76 +1,113 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
-
-
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
 
 
-    /**
-     * Get a JWT via given credentials.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function login()
+    public function __construct()
     {
-        $credentials = request(['email', 'password']);
+        $this->middleware('auth:api', ['except' => ['login', 'register']]);
+    } //end __construct()
 
-        if (!$token = auth()->attempt($credentials)) {
+
+    public function login(Request $request)
+    {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'email'    => 'required|email',
+                'password' => 'required|string|min:6',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+
+        $token_validity = (24 * 60);
+
+        $this->guard()->factory()->setTTL($token_validity);
+
+        if (!$token = $this->guard()->attempt($validator->validated())) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
         return $this->respondWithToken($token);
-    }
+    } //end login()
 
-    /**
-     * Get the authenticated User.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function me()
+
+    public function register(Request $request)
     {
-        return response()->json(auth()->user());
-    }
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'name'     => 'required|string|between:2,100',
+                'email'    => 'required|email|unique:users',
+                'password' => 'required|confirmed|min:6',
+            ]
+        );
 
-    /**
-     * Log the user out (Invalidate the token).
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+        if ($validator->fails()) {
+            return response()->json(
+                [$validator->errors()],
+                422
+            );
+        }
+
+        $user = User::create(
+            array_merge(
+                $validator->validated(),
+                ['password' => bcrypt($request->password)]
+            )
+        );
+
+        return response()->json(['message' => 'User created successfully', 'user' => $user]);
+    } //end register()
+
+
     public function logout()
     {
-        auth()->logout();
+        $this->guard()->logout();
 
-        return response()->json(['message' => 'Successfully logged out']);
-    }
+        return response()->json(['message' => 'User logged out successfully']);
+    } //end logout()
 
-    /**
-     * Refresh a token.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+
+    public function profile()
+    {
+        return response()->json($this->guard()->user());
+    } //end profile()
+
+
     public function refresh()
     {
-        return $this->respondWithToken(auth()->refresh());
-    }
+        return $this->respondWithToken($this->guard()->refresh());
+    } //end refresh()
 
-    /**
-     * Get the token array structure.
-     *
-     * @param  string $token
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+
     protected function respondWithToken($token)
     {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60
-        ]);
-    }
-}
+        return response()->json(
+            [
+                'token'          => $token,
+                'token_type'     => 'bearer',
+                'token_validity' => ($this->guard()->factory()->getTTL() * 60),
+            ]
+        );
+    } //end respondWithToken()
+
+
+    protected function guard()
+    {
+        return Auth::guard();
+    } //end guard()
+
+
+}//end class

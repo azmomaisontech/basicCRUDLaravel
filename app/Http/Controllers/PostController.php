@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
+
+    protected $user;
+
+    public function __construct()
+    {
+        $this->middleware('auth:api');
+        $this->user = $this->guard()->user();
+    }
     /**
      * Display a listing of the resource.
      *
@@ -14,8 +24,8 @@ class PostController extends Controller
      */
     public function index()
     {
-
-        return Post::all();
+        $posts = $this->user->posts->get(['id', 'title', "content", "created_by"]);
+        return response()->json($posts->toArray());
     }
 
     /**
@@ -26,44 +36,111 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        $post = Post::create($request->all());
-        return $post;
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string',
+            'content' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
+        }
+
+        $post            = new Post();
+        $post->title     = $request->title;
+        $post->content      = $request->content;
+
+        if ($this->user->posts()->save($post)) {
+            return response()->json(['post'   => $post]);
+        } else {
+            return response()->json(['message' => 'Could not save post']);
+        }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\Post $post
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Post $post)
     {
-        $post = Post::find($id);
         return $post;
-    }
+    } //end show()
+
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \Illuminate\Http\Request $request
+     * @param  \App\Models\Post         $post
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Post $post)
     {
-        $post = Post::find($id)->update($request->all());
-        return $post;
-    }
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'title'     => 'required|string',
+                'body'      => 'required|string',
+                'completed' => 'required|boolean',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json(
+                [
+                    'errors' => $validator->errors(),
+                ],
+                400
+            );
+        }
+
+        $post->title     = $request->title;
+        $post->content      = $request->body;
+
+        if ($this->user->posts()->save($post)) {
+            return response()->json(
+                [
+                    'post'   => $post,
+                ]
+            );
+        } else {
+            return response()->json(
+                [
+                    'message' => 'Count not update table.',
+                ]
+            );
+        }
+    } //end update()
+
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  \App\Models\Post $post
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Post $post)
     {
-        Post::destroy($id);
-        return "Post deleted successfully";
+        if ($post->delete()) {
+            return response()->json(
+                [
+                    'message' => 'Deleted successfully'
+                ]
+            );
+        } else {
+            return response()->json(
+                [
+                    'message' => 'Could not delete post',
+                ]
+            );
+        }
+    } //end destroy()
+
+
+    protected function guard()
+    {
+        return Auth::guard();
     }
 }
