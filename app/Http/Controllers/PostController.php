@@ -24,8 +24,8 @@ class PostController extends Controller
      */
     public function index()
     {
-        $posts = $this->user->posts->get(['id', 'title', "content", "created_by"]);
-        return response()->json($posts->toArray());
+        $posts = $this->user->posts->all();
+        return response()->json($posts);
     }
 
     /**
@@ -81,9 +81,8 @@ class PostController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
-                'title'     => 'required|string',
-                'body'      => 'required|string',
-                'completed' => 'required|boolean',
+                'title'     => 'string',
+                'content'      => 'string',
             ]
         );
 
@@ -96,13 +95,13 @@ class PostController extends Controller
             );
         }
 
-        $post->title     = $request->title;
-        $post->content      = $request->body;
+        // $post->title     = $request->title;
+        // $post->content      = $request->body;
 
-        if ($this->user->posts()->save($post)) {
+        if ($this->user->posts()->update($request->all())) {
             return response()->json(
                 [
-                    'post'   => $post,
+                    'message'   => 'Post updated successfully',
                 ]
             );
         } else {
